@@ -333,7 +333,7 @@
 
       const msgSalam = spinText(replaceName(templateSalam, nama));
       const msgMain = replaceName(templateMain, nama);
-      const finalMsg = `${msgSalam} ${msgMain}`;
+      const finalMsg = `${msgSalam}\n\n${msgMain}`;
 
       window.open(
         `https://wa.me/${telefon}?text=${encodeURIComponent(finalMsg)}`,
