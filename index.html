@@ -4,17 +4,48 @@
   <meta charset="UTF-8">
   <title>Senarai Ahli Jawatankuasa Pemuda</title>
   <style>
-    body { font-family: Arial; padding: 20px; background: #1c1c1c; color: #eee; }
-    table { width:100%; border-collapse:collapse; margin-top:10px; }
-    th, td { border:1px solid #333; padding:8px; text-align:left; }
-    th { background:#333; }
-    #search, #jawatanFilter {
-      width:100%; padding:8px; margin-bottom:10px;
-      border:1px solid #444; border-radius:4px;
-      background:#2b2b2b; color:#eee;
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #1c1c1c;
+      color: #eee;
     }
-    a { color:#4caf50; text-decoration:none; }
-    a:hover { text-decoration:underline; }
+    h2 {
+      margin-bottom: 10px;
+    }
+    #search, #jawatanFilter {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: #2b2b2b;
+      color: #eee;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #333;
+    }
+    a {
+      color: #4caf50;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    #countInfo {
+      margin-top: 10px;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -24,6 +55,7 @@
 <select id="jawatanFilter">
   <option value="">Tapis mengikut jawatan…</option>
 </select>
+<p id="countInfo"></p>
 
 <table id="senarai">
   <thead>
@@ -41,71 +73,75 @@
 <!-- PapaParse dari CDN -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 <script>
-const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQwRhl3FVUAF_EuykuzHfy6IVFgT3Govb06k4puLaQy8j7wJuI194KxNSC_zGjKhcyM2sFwEazuU9Z4/pubhtml?gid=0&single=true&output=csv"; 
+  const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQwRhl3FVUAF_EuykuzHfy6IVFgT3Govb06k4puLaQy8j7wJuI194KxNSC_zGjKhcyM2sFwEazuU9Z4/pub?gid=0&single=true&output=csv";
 
-let allRows = [];
+  let allRows = [];
 
-fetch(url)
-  .then(r => {
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.text();
-  })
-  .then(csvText => {
-    const results = Papa.parse(csvText, { skipEmptyLines: true });
-    // Buang header, data mulai dari kolum Bil, Nama, Jawatan, IC+Telefon
-    allRows = results.data.slice(1);
-    populateFilter(allRows);
-    populateTable(allRows);
-  })
-  .catch(err => console.error("Fetch/Parse error:", err));
+  fetch(url)
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.text();
+    })
+    .then(csvText => {
+      const results = Papa.parse(csvText, { skipEmptyLines: true });
+      allRows = results.data.slice(1); // Buang header
+      populateFilter(allRows);
+      populateTable(allRows);
+    })
+    .catch(error => console.error("Fetch/Parse error:", error));
 
-function populateTable(rows) {
-  const tbody = document.querySelector("#senarai tbody");
-  tbody.innerHTML = "";
+  function populateTable(rows) {
+    const tbody = document.querySelector("#senarai tbody");
+    const countInfo = document.getElementById("countInfo");
+    tbody.innerHTML = "";
 
-  rows.forEach(cols => {
-    let bil = cols[0] || "-";
-    let nama = cols[1] || "-";
-    let jawatan = cols[2] || "-";
-    let icTelefonRaw = cols[3] || "";
-    let [ic, telRaw] = icTelefonRaw.split(/\r?\n/);
-    let telefon = (telRaw||"").replace(/[^0-9]/g, '');
-    let waLink = telefon
-      ? `<a href="https://wa.me/6${telefon}" target="_blank">${telefon}</a>`
-      : "-";
+    rows.forEach(cols => {
+      let bil = cols[0] || "-";
+      let nama = cols[1] || "-";
+      let jawatan = cols[2] || "-";
+      let icTelefonRaw = cols[3] || "";
+      let parts = icTelefonRaw.split(/\r?\n/);
+      let ic = parts[0] || "-";
+      let telRaw = parts[1] || "";
+      let telefon = telRaw.replace(/[^0-9]/g, '');
+      if (telefon.startsWith("0")) telefon = "6" + telefon.slice(1);
+      let waLink = telefon
+        ? `<a href="https://wa.me/${telefon}" target="_blank">${telRaw}</a>`
+        : "-";
 
-    tbody.insertAdjacentHTML("beforeend", `
-      <tr>
-        <td>${bil}</td>
-        <td>${nama}</td>
-        <td>${jawatan}</td>
-        <td>${ic || '-'}</td>
-        <td>${waLink}</td>
-      </tr>
-    `);
-  });
-}
+      tbody.insertAdjacentHTML("beforeend", `
+        <tr>
+          <td>${bil}</td>
+          <td>${nama}</td>
+          <td>${jawatan}</td>
+          <td>${ic}</td>
+          <td>${waLink}</td>
+        </tr>
+      `);
+    });
 
-function populateFilter(rows) {
-  let set = new Set(rows.map(r => r[2])); // kolum jawatan = index 2
-  let sel = document.getElementById("jawatanFilter");
-  set.forEach(j => sel.add(new Option(j, j)));
-}
+    countInfo.textContent = `Jumlah rekod: ${rows.length}`;
+  }
 
-// Cari dan tapis
-document.getElementById("search").addEventListener("input", filterAndSearch);
-document.getElementById("jawatanFilter").addEventListener("change", filterAndSearch);
+  function populateFilter(rows) {
+    let set = new Set(rows.map(r => r[2]));
+    let sel = document.getElementById("jawatanFilter");
+    Array.from(set).sort().forEach(j => sel.add(new Option(j, j)));
+  }
 
-function filterAndSearch() {
-  let kw = document.getElementById("search").value.toLowerCase();
-  let job = document.getElementById("jawatanFilter").value;
-  let filtered = allRows.filter(r => {
-    let nama = r[1].toLowerCase();
-    let jaw = r[2].toLowerCase();
-    return (nama.includes(kw) || jaw.includes(kw)) && (job ? r[2] === job : true);
-  });
-  populateTable(filtered);
-}
+  document.getElementById("search").addEventListener("input", filterAndSearch);
+  document.getElementById("jawatanFilter").addEventListener("change", filterAndSearch);
+
+  function filterAndSearch() {
+    let kw = document.getElementById("search").value.toLowerCase();
+    let job = document.getElementById("jawatanFilter").value;
+    let filtered = allRows.filter(r => {
+      let nama = (r[1] || "").toLowerCase();
+      let jaw = (r[2] || "").toLowerCase();
+      return (nama.includes(kw) || jaw.includes(kw)) && (job ? r[2] === job : true);
+    });
+    populateTable(filtered);
+  }
 </script>
 
 </body>
