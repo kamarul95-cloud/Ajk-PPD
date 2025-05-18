@@ -3,23 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <title>Senarai Ahli Jawatankuasa Pemuda</title>
-  <style>
+  <style id="theme-style">
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
+      background-color: #fff;
+      color: #000;
+    }
+    .dark body {
       background-color: #1c1c1c;
       color: #eee;
     }
     h2 {
       margin-bottom: 10px;
     }
-    #search, #jawatanFilter {
+    #search, #jawatanFilter, #templateMsg {
       width: 100%;
       padding: 8px;
       margin-bottom: 10px;
-      border: 1px solid #444;
+      border: 1px solid #aaa;
       border-radius: 4px;
+    }
+    .dark #search, .dark #jawatanFilter, .dark #templateMsg {
       background-color: #2b2b2b;
+      border-color: #444;
       color: #eee;
     }
     table {
@@ -28,15 +35,21 @@
       margin-top: 10px;
     }
     th, td {
-      border: 1px solid #333;
+      border: 1px solid #ccc;
       padding: 8px;
       text-align: left;
     }
+    .dark th, .dark td {
+      border-color: #333;
+    }
     th {
+      background-color: #eee;
+    }
+    .dark th {
       background-color: #333;
     }
     a {
-      color: #4caf50;
+      color: #1a73e8;
       text-decoration: none;
     }
     a:hover {
@@ -46,15 +59,22 @@
       margin-top: 10px;
       font-style: italic;
     }
+    #toggleTheme {
+      margin-bottom: 15px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
+<button id="toggleTheme">Tukar ke Mod Gelap</button>
 <h2>Senarai Ahli Jawatankuasa Pemuda</h2>
 <input type="text" id="search" placeholder="Cari nama atau jawatan…">
 <select id="jawatanFilter">
   <option value="">Tapis mengikut jawatan…</option>
 </select>
+<textarea id="templateMsg" rows="3" placeholder="Tulis mesej WhatsApp templat di sini…"></textarea>
 <p id="countInfo"></p>
 
 <table id="senarai">
@@ -70,29 +90,24 @@
   <tbody></tbody>
 </table>
 
-<!-- PapaParse dari CDN -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 <script>
   const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQwRhl3FVUAF_EuykuzHfy6IVFgT3Govb06k4puLaQy8j7wJuI194KxNSC_zGjKhcyM2sFwEazuU9Z4/pub?gid=0&single=true&output=csv";
-
   let allRows = [];
 
   fetch(url)
-    .then(response => {
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.text();
-    })
-    .then(csvText => {
-      const results = Papa.parse(csvText, { skipEmptyLines: true });
-      allRows = results.data.slice(1); // Buang header
+    .then(r => r.text())
+    .then(csv => {
+      const results = Papa.parse(csv, { skipEmptyLines: true });
+      allRows = results.data.slice(1);
       populateFilter(allRows);
       populateTable(allRows);
-    })
-    .catch(error => console.error("Fetch/Parse error:", error));
+    });
 
   function populateTable(rows) {
     const tbody = document.querySelector("#senarai tbody");
     const countInfo = document.getElementById("countInfo");
+    const msgTemplate = document.getElementById("templateMsg").value.trim();
     tbody.innerHTML = "";
 
     rows.forEach(cols => {
@@ -106,7 +121,7 @@
       let telefon = telRaw.replace(/[^0-9]/g, '');
       if (telefon.startsWith("0")) telefon = "6" + telefon.slice(1);
       let waLink = telefon
-        ? `<a href="https://wa.me/${telefon}" target="_blank">${telRaw}</a>`
+        ? `<a href="https://wa.me/${telefon}?text=${encodeURIComponent(msgTemplate)}" target="_blank">${telRaw}</a>`
         : "-";
 
       tbody.insertAdjacentHTML("beforeend", `
@@ -131,17 +146,31 @@
 
   document.getElementById("search").addEventListener("input", filterAndSearch);
   document.getElementById("jawatanFilter").addEventListener("change", filterAndSearch);
+  document.getElementById("templateMsg").addEventListener("input", () => populateTable(filterRows()));
 
   function filterAndSearch() {
+    const rows = filterRows();
+    populateTable(rows);
+  }
+
+  function filterRows() {
     let kw = document.getElementById("search").value.toLowerCase();
     let job = document.getElementById("jawatanFilter").value;
-    let filtered = allRows.filter(r => {
+    return allRows.filter(r => {
       let nama = (r[1] || "").toLowerCase();
       let jaw = (r[2] || "").toLowerCase();
       return (nama.includes(kw) || jaw.includes(kw)) && (job ? r[2] === job : true);
     });
-    populateTable(filtered);
   }
+
+  // Theme toggle
+  const btnToggle = document.getElementById("toggleTheme");
+  btnToggle.addEventListener("click", () => {
+    document.documentElement.classList.toggle("dark");
+    btnToggle.textContent = document.documentElement.classList.contains("dark")
+      ? "Tukar ke Mod Terang"
+      : "Tukar ke Mod Gelap";
+  });
 </script>
 
 </body>
