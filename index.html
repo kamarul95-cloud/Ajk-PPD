@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Senarai Ahli Jawatankuasa Pemuda</title>
   <style id="theme-style">
     body {
@@ -17,14 +17,19 @@
     h2 {
       margin-bottom: 10px;
     }
-    #search, #jawatanFilter, #templateMsg {
+    #search, #jawatanFilter, #templateMsg, #templateMsg2 {
       width: 100%;
       padding: 8px;
       margin-bottom: 10px;
       border: 1px solid #aaa;
       border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 14px;
     }
-    .dark #search, .dark #jawatanFilter, .dark #templateMsg {
+    .dark #search,
+    .dark #jawatanFilter,
+    .dark #templateMsg,
+    .dark #templateMsg2 {
       background-color: #2b2b2b;
       border-color: #444;
       color: #eee;
@@ -59,119 +64,209 @@
       margin-top: 10px;
       font-style: italic;
     }
-    #toggleTheme {
-      margin-bottom: 15px;
+    #toggleTheme, #sendNext {
+      margin-bottom: 10px;
       padding: 6px 12px;
       cursor: pointer;
+      display: inline-block;
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    #toggleTheme:hover, #sendNext:hover {
+      background-color: #155ab6;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
     }
   </style>
 </head>
 <body>
 
-<button id="toggleTheme">Tukar ke Mod Gelap</button>
-<h2>Senarai Ahli Jawatankuasa Pemuda</h2>
-<input type="text" id="search" placeholder="Cari nama atau jawatan…">
-<select id="jawatanFilter">
-  <option value="">Tapis mengikut jawatan…</option>
-</select>
-<textarea id="templateMsg" rows="3" placeholder="Tulis mesej WhatsApp templat di sini…"></textarea>
-<p id="countInfo"></p>
+  <button id="toggleTheme">Tukar ke Mod Gelap</button>
+  <button id="sendNext">Hantar Mesej 1 demi 1</button>
 
-<table id="senarai">
-  <thead>
-    <tr>
-      <th>Bil</th>
-      <th>Nama</th>
-      <th>Jawatan</th>
-      <th>No. IC</th>
-      <th>No. Telefon</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+  <h2>Senarai Ahli Jawatankuasa Pemuda</h2>
 
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
-<script>
-  const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQwRhl3FVUAF_EuykuzHfy6IVFgT3Govb06k4puLaQy8j7wJuI194KxNSC_zGjKhcyM2sFwEazuU9Z4/pub?gid=0&single=true&output=csv";
-  let allRows = [];
+  <input type="text" id="search" placeholder="Cari nama atau jawatan…" />
+  <select id="jawatanFilter">
+    <option value="">Tapis mengikut jawatan…</option>
+  </select>
 
-  fetch(url)
-    .then(r => r.text())
-    .then(csv => {
-      const results = Papa.parse(csv, { skipEmptyLines: true });
-      allRows = results.data.slice(1);
-      populateFilter(allRows);
-      populateTable(allRows);
+  <label for="templateMsg2">Preset spintax salam (boleh edit):</label>
+  <textarea id="templateMsg2" rows="3">
+{_Assalamualaikum_|_Assalamualaikum wbt_|_السَّلَامُ عَلَيْكُمْ_|_Salam_|_As Salam_} *[nama]* {😁|😃}
+  </textarea>
+
+  <label for="templateMsg">Template mesej (gunakan [nama] untuk gantikan nama):</label>
+  <textarea id="templateMsg" rows="3" placeholder="Tulis mesej utama di sini…"></textarea>
+
+  <p id="countInfo"></p>
+
+  <table id="senarai">
+    <thead>
+      <tr>
+        <th>Bil</th>
+        <th>Nama</th>
+        <th>Jawatan</th>
+        <th>No. IC</th>
+        <th>No. Telefon</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+  <script>
+    const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQwRhl3FVUAF_EuykuzHfy6IVFgT3Govb06k4puLaQy8j7wJuI194KxNSC_zGjKhcyM2sFwEazuU9Z4/pub?gid=0&single=true&output=csv";
+    let allRows = [];
+    let currentIndex = 0;
+
+    // Muat turun CSV dan isi data
+    fetch(url)
+      .then(r => r.text())
+      .then(csv => {
+        const results = Papa.parse(csv, { skipEmptyLines: true });
+        allRows = results.data.slice(1);
+        populateFilter(allRows);
+        populateTable(allRows);
+      });
+
+    // Fungsi parse spintax {a|b|c}
+    function spinText(spintax) {
+      return spintax.replace(/\{([^{}]+)\}/g, (match, group) => {
+        const options = group.split('|').map(s => s.trim());
+        return options[Math.floor(Math.random() * options.length)];
+      });
+    }
+
+    // Gantikan [nama]
+    function replaceName(text, nama) {
+      return text.replace(/\[nama\]/gi, nama.trim());
+    }
+
+    // Isi dropdown jawatan
+    function populateFilter(rows) {
+      const sel = document.getElementById("jawatanFilter");
+      let set = new Set(rows.map(r => r[2]));
+      set.delete("");
+      Array.from(set).sort().forEach(j => sel.add(new Option(j, j)));
+    }
+
+    // Strim baris ikut carian & tapis
+    function filterRows() {
+      const kw = document.getElementById("search").value.toLowerCase();
+      const job = document.getElementById("jawatanFilter").value;
+      return allRows.filter(r => {
+        const nama = (r[1] || "").toLowerCase();
+        const jaw = (r[2] || "").toLowerCase();
+        return (nama.includes(kw) || jaw.includes(kw)) && (job ? r[2] === job : true);
+      });
+    }
+
+    // Paparkan jadual
+    function populateTable(rows) {
+      const tbody = document.querySelector("#senarai tbody");
+      const countInfo = document.getElementById("countInfo");
+      const templateMain = document.getElementById("templateMsg").value.trim();
+      const templateSalam = document.getElementById("templateMsg2").value.trim();
+      tbody.innerHTML = "";
+
+      rows.forEach(cols => {
+        let bil = cols[0] || "-";
+        let nama = cols[1] || "-";
+        let jawatan = cols[2] || "-";
+        let icTelefonRaw = cols[3] || "";
+        let parts = icTelefonRaw.split(/\r?\n/);
+        let ic = parts[0] || "-";
+        let telRaw = parts[1] || "";
+        let telefon = telRaw.replace(/[^0-9]/g, '');
+        if (telefon.startsWith("0")) telefon = "60" + telefon.slice(1);
+
+        let msgMain = replaceName(templateMain, nama);
+        let msgSalam = spinText(replaceName(templateSalam, nama));
+        let fullMsg = msgSalam + " " + msgMain;
+
+        let waLink = telefon
+          ? `<a href="https://wa.me/${telefon}?text=${encodeURIComponent(fullMsg)}" target="_blank">${telRaw}</a>`
+          : "-";
+
+        tbody.insertAdjacentHTML("beforeend", `
+          <tr>
+            <td>${bil}</td>
+            <td>${nama}</td>
+            <td>${jawatan}</td>
+            <td>${ic}</td>
+            <td>${waLink}</td>
+          </tr>
+        `);
+      });
+
+      countInfo.textContent = `Jumlah rekod: ${rows.length}`;
+    }
+
+    // Event listener untuk carian, tapis & kemaskini template
+    ["search", "jawatanFilter", "templateMsg", "templateMsg2"].forEach(id => {
+      document.getElementById(id).addEventListener("input", () => {
+        currentIndex = 0;
+        const rows = filterRows();
+        populateTable(rows);
+      });
     });
 
-  function populateTable(rows) {
-    const tbody = document.querySelector("#senarai tbody");
-    const countInfo = document.getElementById("countInfo");
-    const msgTemplate = document.getElementById("templateMsg").value.trim();
-    tbody.innerHTML = "";
+    // Toggle dark mode
+    document.getElementById("toggleTheme").addEventListener("click", () => {
+      document.documentElement.classList.toggle("dark");
+      document.getElementById("toggleTheme").textContent =
+        document.documentElement.classList.contains("dark")
+          ? "Tukar ke Mod Terang"
+          : "Tukar ke Mod Gelap";
+    });
 
-    rows.forEach(cols => {
-      let bil = cols[0] || "-";
-      let nama = cols[1] || "-";
-      let jawatan = cols[2] || "-";
-      let icTelefonRaw = cols[3] || "";
-      let parts = icTelefonRaw.split(/\r?\n/);
-      let ic = parts[0] || "-";
-      let telRaw = parts[1] || "";
+    // Hantar mesej seterusnya satu-per-satu
+    document.getElementById("sendNext").addEventListener("click", () => {
+      const rows = filterRows();
+      if (rows.length === 0) {
+        alert("Tiada rekod untuk dihantar mesej.");
+        return;
+      }
+      if (currentIndex >= rows.length) {
+        alert("Semua mesej telah dihantar.");
+        currentIndex = 0;
+        return;
+      }
+      const cols = rows[currentIndex++];
+      const nama = cols[1] || "-";
+      const icTelefonRaw = cols[3] || "";
+      const parts = icTelefonRaw.split(/\r?\n/);
+      const telRaw = parts[1] || "";
       let telefon = telRaw.replace(/[^0-9]/g, '');
       if (telefon.startsWith("0")) telefon = "60" + telefon.slice(1);
-      let waLink = telefon
-        ? `<a href="https://wa.me/${telefon}?text=${encodeURIComponent(msgTemplate)}" target="_blank">${telRaw}</a>`
-        : "-";
+      if (!telefon) {
+        alert(`Tiada nombor telefon untuk ${nama}. Mesej dilepaskan.`);
+        return;
+      }
 
-      tbody.insertAdjacentHTML("beforeend", `
-        <tr>
-          <td>${bil}</td>
-          <td>${nama}</td>
-          <td>${jawatan}</td>
-          <td>${ic}</td>
-          <td>${waLink}</td>
-        </tr>
-      `);
+      const templateMain = document.getElementById("templateMsg").value.trim();
+      if (!templateMain) {
+        alert("Sila masukkan template mesej dahulu.");
+        return;
+      }
+      const templateSalam = document.getElementById("templateMsg2").value.trim();
+
+      const msgSalam = spinText(replaceName(templateSalam, nama));
+      const msgMain = replaceName(templateMain, nama);
+      const finalMsg = `${msgSalam} ${msgMain}`;
+
+      window.open(
+        `https://wa.me/${telefon}?text=${encodeURIComponent(finalMsg)}`,
+        "_blank"
+      );
     });
-
-    countInfo.textContent = `Jumlah rekod: ${rows.length}`;
-  }
-
-  function populateFilter(rows) {
-    let set = new Set(rows.map(r => r[2]));
-    let sel = document.getElementById("jawatanFilter");
-    Array.from(set).sort().forEach(j => sel.add(new Option(j, j)));
-  }
-
-  document.getElementById("search").addEventListener("input", filterAndSearch);
-  document.getElementById("jawatanFilter").addEventListener("change", filterAndSearch);
-  document.getElementById("templateMsg").addEventListener("input", () => populateTable(filterRows()));
-
-  function filterAndSearch() {
-    const rows = filterRows();
-    populateTable(rows);
-  }
-
-  function filterRows() {
-    let kw = document.getElementById("search").value.toLowerCase();
-    let job = document.getElementById("jawatanFilter").value;
-    return allRows.filter(r => {
-      let nama = (r[1] || "").toLowerCase();
-      let jaw = (r[2] || "").toLowerCase();
-      return (nama.includes(kw) || jaw.includes(kw)) && (job ? r[2] === job : true);
-    });
-  }
-
-  // Theme toggle
-  const btnToggle = document.getElementById("toggleTheme");
-  btnToggle.addEventListener("click", () => {
-    document.documentElement.classList.toggle("dark");
-    btnToggle.textContent = document.documentElement.classList.contains("dark")
-      ? "Tukar ke Mod Terang"
-      : "Tukar ke Mod Gelap";
-  });
-</script>
-
+  </script>
 </body>
 </html>
