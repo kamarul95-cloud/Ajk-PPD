@@ -119,7 +119,7 @@
       let ic = parts[0] || "-";
       let telRaw = parts[1] || "";
       let telefon = telRaw.replace(/[^0-9]/g, '');
-      if (telefon.startsWith("0")) telefon = "6" + telefon.slice(1);
+      if (telefon.startsWith("0")) telefon = "60" + telefon.slice(1);
       let waLink = telefon
         ? `<a href="https://wa.me/${telefon}?text=${encodeURIComponent(msgTemplate)}" target="_blank">${telRaw}</a>`
         : "-";
