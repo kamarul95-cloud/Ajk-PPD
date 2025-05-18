@@ -127,7 +127,6 @@
     let allRows = [];
     let currentIndex = 0;
 
-    // Muat turun CSV dan isi data
     fetch(url)
       .then(r => r.text())
       .then(csv => {
@@ -135,9 +134,9 @@
         allRows = results.data.slice(1);
         populateFilter(allRows);
         populateTable(allRows);
+        updateSendNextLabel(); // ✅ Panggil selepas populate
       });
 
-    // Fungsi parse spintax {a|b|c}
     function spinText(spintax) {
       return spintax.replace(/\{([^{}]+)\}/g, (match, group) => {
         const options = group.split('|').map(s => s.trim());
@@ -145,12 +144,10 @@
       });
     }
 
-    // Gantikan [nama]
     function replaceName(text, nama) {
       return text.replace(/\[nama\]/gi, nama.trim());
     }
 
-    // Isi dropdown jawatan
     function populateFilter(rows) {
       const sel = document.getElementById("jawatanFilter");
       let set = new Set(rows.map(r => r[2]));
@@ -158,7 +155,6 @@
       Array.from(set).sort().forEach(j => sel.add(new Option(j, j)));
     }
 
-    // Strim baris ikut carian & tapis
     function filterRows() {
       const kw = document.getElementById("search").value.toLowerCase();
       const job = document.getElementById("jawatanFilter").value;
@@ -169,7 +165,6 @@
       });
     }
 
-    // Paparkan jadual
     function populateTable(rows) {
       const tbody = document.querySelector("#senarai tbody");
       const countInfo = document.getElementById("countInfo");
@@ -210,16 +205,30 @@
       countInfo.textContent = `Jumlah rekod: ${rows.length}`;
     }
 
-    // Event listener untuk carian, tapis & kemaskini template
+    function updateSendNextLabel() {
+      const rows = filterRows();
+      const btn = document.getElementById("sendNext");
+      if (rows.length === 0) {
+        btn.textContent = "Tiada penerima";
+        return;
+      }
+      if (currentIndex >= rows.length) {
+        btn.textContent = "Semua mesej telah dihantar";
+        return;
+      }
+      const nextNama = rows[currentIndex][1] || "Tanpa Nama";
+      btn.textContent = `📤 Hantar kepada: ${nextNama}`;
+    }
+
     ["search", "jawatanFilter", "templateMsg", "templateMsg2"].forEach(id => {
       document.getElementById(id).addEventListener("input", () => {
         currentIndex = 0;
         const rows = filterRows();
         populateTable(rows);
+        updateSendNextLabel(); // ✅ Update butang selepas filter
       });
     });
 
-    // Toggle dark mode
     document.getElementById("toggleTheme").addEventListener("click", () => {
       document.documentElement.classList.toggle("dark");
       document.getElementById("toggleTheme").textContent =
@@ -228,7 +237,6 @@
           : "Tukar ke Mod Gelap";
     });
 
-    // Hantar mesej seterusnya satu-per-satu
     document.getElementById("sendNext").addEventListener("click", () => {
       const rows = filterRows();
       if (rows.length === 0) {
@@ -238,9 +246,10 @@
       if (currentIndex >= rows.length) {
         alert("Semua mesej telah dihantar.");
         currentIndex = 0;
+        updateSendNextLabel(); // ✅ Reset label
         return;
       }
-      const cols = rows[currentIndex++];
+      const cols = rows[currentIndex];
       const nama = cols[1] || "-";
       const icTelefonRaw = cols[3] || "";
       const parts = icTelefonRaw.split(/\r?\n/);
@@ -262,6 +271,9 @@
       const msgSalam = spinText(replaceName(templateSalam, nama));
       const msgMain = replaceName(templateMain, nama);
       const finalMsg = `${msgSalam} ${msgMain}`;
+
+      currentIndex++;
+      updateSendNextLabel(); // ✅ Update selepas hantar
 
       window.open(
         `https://wa.me/${telefon}?text=${encodeURIComponent(finalMsg)}`,
